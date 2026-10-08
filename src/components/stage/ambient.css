@@ -1,0 +1,78 @@
+/* Ambient stage motion. Transform and opacity only, so it all runs on the compositor. */
+
+@keyframes amb-sway {
+  0%, 100% { transform: rotate(-1.1deg) translateX(-0.4%) }
+  50% { transform: rotate(1.1deg) translateX(0.4%) }
+}
+.amb-sway { transform-origin: 50% 0; animation: amb-sway 7s ease-in-out infinite; }
+
+@keyframes amb-wind {
+  0%, 100% { transform: skewX(0deg) }
+  35% { transform: skewX(-1.4deg) }
+  60% { transform: skewX(-0.6deg) }
+  80% { transform: skewX(-1.1deg) }
+}
+.amb-wind { transform-origin: 50% 100%; animation: amb-wind 9s ease-in-out infinite; }
+
+@keyframes amb-flicker {
+  0%, 100% { opacity: .72; transform: scale(1) }
+  9% { opacity: .95 }
+  13% { opacity: .58 }
+  21% { opacity: .88; transform: scale(1.04) }
+  36% { opacity: .66 }
+  46% { opacity: 1 }
+  55% { opacity: .76; transform: scale(.97) }
+  70% { opacity: .92 }
+  82% { opacity: .6 }
+}
+.amb-flicker { animation: amb-flicker 2.6s linear infinite; }
+
+@keyframes amb-hum {
+  0%, 100% { opacity: .65 }
+  50% { opacity: 1 }
+}
+.amb-hum { animation: amb-hum 4.5s ease-in-out infinite; }
+
+/* A failing neon ballast: mostly steady, then a stutter. */
+@keyframes amb-buzz {
+  0%, 41%, 44%, 47%, 86%, 100% { opacity: 1 }
+  42% { opacity: .15 }
+  45% { opacity: .5 }
+  46% { opacity: .1 }
+  87% { opacity: .35 }
+}
+.amb-buzz { animation: amb-buzz 5.3s steps(1, end) infinite; }
+
+@keyframes amb-blink {
+  0%, 55%, 100% { opacity: .15 }
+  60%, 75% { opacity: 1 }
+}
+.amb-blink { animation: amb-blink 2.4s ease-in-out infinite; }
+
+@keyframes amb-drift {
+  0% { transform: translateX(-9%); opacity: .55 }
+  50% { opacity: 1 }
+  100% { transform: translateX(9%); opacity: .7 }
+}
+.amb-drift { animation: amb-drift 50s ease-in-out infinite alternate; }
+
+@keyframes amb-rise {
+  0% { transform: translateY(20%) scale(.5); opacity: 0 }
+  25% { opacity: 1 }
+  100% { transform: translate(18%, -70%) scale(1.5); opacity: 0 }
+}
+.amb-rise { animation: amb-rise 5s ease-out infinite; }
+
+@keyframes amb-ripple {
+  0% { transform: scale(.15); opacity: 0 }
+  15% { opacity: 1 }
+  100% { transform: scale(1); opacity: 0 }
+}
+.amb-ripple { animation: amb-ripple 1.8s ease-out infinite; }
+
+.amb-late { animation-delay: -3.3s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .amb-sway, .amb-wind, .amb-flicker, .amb-hum, .amb-buzz, .amb-blink, .amb-drift { animation: none; }
+  .amb-rise, .amb-ripple { display: none; }
+}
