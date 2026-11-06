@@ -164,7 +164,7 @@ function NetFight({ match, onAgain, onExit }: { match: Match; onAgain: () => voi
           detail={
             match.endedBy === "abandoned"
               ? "Nobody finished this match. Ratings didn't change."
-              : `${match.endedBy === "forfeit" ? (won ? `${names[1 - match.side]} left the match. ` : "You left the match. ") : ""}PvP rating ${won ? "+" : "−"}${match.ratingChange ?? 0}`
+              : `${match.endedBy === "forfeit" ? (won ? `${names[1 - match.side]} left the match. ` : "You left the match. ") : ""}${match.ratingChange ? `PvP rating ${won ? "+" : "−"}${match.ratingChange}` : "Unrated: too short, or you've played this opponent a lot today."}`
           }
           again="Find another"
           onAgain={onAgain}

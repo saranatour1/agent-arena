@@ -140,9 +140,9 @@ export const planMoves = action({
   handler: async (ctx, { matchId, side, situation }): Promise<RtPlan & { thinkMs: number }> => {
     const userId = await getAuthUserId(ctx);
     if (userId === null) throw new Error("Not signed in");
-    const info: { fighterId: FighterId; opponent: string } | null = await ctx.runQuery(
+    const info: { fighterId: FighterId; opponent: string; globalCapSet: boolean } | null = await ctx.runQuery(
       internal.game.planContext,
-      { matchId, side, userId },
+      { matchId, side, userId, now: Date.now() },
     );
     if (info === null) throw new Error("Not an AI side of your current match");
     const s = {
@@ -153,6 +153,10 @@ export const planMoves = action({
     const startedAt = Date.now();
     const scripted = () => ({ ...scriptedPlan(s), thinkMs: Date.now() - startedAt });
 
+    if (!info.globalCapSet) {
+      console.error("No global AI spend cap: run `npx convex run limits:init`. Using scripted moves.");
+      return scripted();
+    }
     if (!(await rateLimiter.limit(ctx, "plans", { key: userId })).ok) return scripted();
     const abortSignal = AbortSignal.timeout(PLAN_TIMEOUT_MS);
     try {

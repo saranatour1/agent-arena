@@ -4,6 +4,7 @@ import { getAuthUserId } from "@convex-dev/auth/core";
 import { env, httpAction, internalQuery, mutation } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { FIGHTERS } from "./game/fighters";
+import { rateLimiter } from "./limits";
 
 const MAX_CARD_BYTES = 2_000_000;
 
@@ -11,7 +12,9 @@ export const generateUploadUrl = mutation({
   args: {},
   returns: v.string(),
   handler: async (ctx) => {
-    if ((await getAuthUserId(ctx)) === null) throw new ConvexError("Not signed in");
+    const userId = await getAuthUserId(ctx);
+    if (userId === null) throw new ConvexError("Not signed in");
+    await rateLimiter.limit(ctx, "uploads", { key: userId, throws: true });
     return await ctx.storage.generateUploadUrl();
   },
 });
@@ -23,6 +26,15 @@ export const saveCard = mutation({
     const userId = await getAuthUserId(ctx);
     const run = await ctx.db.get("runs", runId);
     if (!run || run.userId !== userId) throw new ConvexError("Not your run");
+    // Storage IDs are public (og:image URLs). Never touch a file another run already uses.
+    const owner = await ctx.db
+      .query("runs")
+      .withIndex("by_shareImage", (q) => q.eq("shareImage", storageId))
+      .first();
+    if (owner) {
+      if (owner._id === runId) return null;
+      throw new ConvexError("Not your file");
+    }
     const meta = await ctx.db.system.get("_storage", storageId);
     if (!meta || meta.size > MAX_CARD_BYTES || meta.contentType !== "image/png") {
       await ctx.storage.delete(storageId);

@@ -1,4 +1,4 @@
-import { RateLimiter, MINUTE } from "@convex-dev/rate-limiter";
+import { RateLimiter, MINUTE, HOUR } from "@convex-dev/rate-limiter";
 import { AIBudget } from "@convex-dev/ai-budget";
 import { getAuthUserId } from "@convex-dev/auth/core";
 import { components } from "./_generated/api";
@@ -9,6 +9,8 @@ export const rateLimiter = new RateLimiter(components.rateLimiter, {
   hearts: { kind: "token bucket", rate: 1, period: 30 * MINUTE, capacity: 5 },
   // Model plans: two AI fighters, each at most one plan every 4s, with headroom.
   plans: { kind: "token bucket", rate: 90, period: MINUTE, capacity: 30 },
+  // Share-card uploads (convex/share.ts).
+  uploads: { kind: "token bucket", rate: 10, period: HOUR, capacity: 10 },
 });
 
 export const { getRateLimit: getHearts, getServerTime } = rateLimiter.hookAPI(

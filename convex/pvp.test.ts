@@ -12,6 +12,8 @@ const modules = import.meta.glob("./**/*.ts");
 beforeEach(() => vi.useFakeTimers());
 afterEach(() => vi.useRealTimers());
 
+const QUEUE_GAP_MS = 1_000;
+
 async function twoPlayers() {
   const t = convexTest(schema, modules);
   const make = async (username: string) => {
@@ -81,5 +83,32 @@ describe("online PvP", () => {
     vi.advanceTimersByTime(9_000);
     expect(await a.as.mutation(api.pvp.claimWin, { matchId })).toBe(true);
     expect(await b.as.query(api.pvp.myMatch, {})).toMatchObject({ status: "done", winner: 0, endedBy: "forfeit" });
+  });
+
+  test("an instant forfeit is unrated, and a pair gets at most 3 rated games a day", async () => {
+    const { t, a, b } = await twoPlayers();
+    await a.as.mutation(api.pvp.findMatch, {});
+    const { matchId } = (await b.as.mutation(api.pvp.findMatch, {}))!;
+    await b.as.mutation(api.pvp.forfeit, { matchId }); // alt quits on frame 0
+    expect(await a.as.query(api.pvp.myMatch, {})).toMatchObject({ status: "done", winner: 0, ratingChange: 0 });
+
+    // Three rated games already today between this pair: the next real KO is unrated.
+    await t.run(async (ctx) => {
+      for (let i = 0; i < 3; i++) {
+        await ctx.db.insert("pvpMatches", {
+          p0: a.userId, p1: b.userId, names: ["ALICE", "BOB"], costumes: ["", ""], status: "done", winner: 0, ratingChange: 16,
+        });
+      }
+    });
+    vi.advanceTimersByTime(QUEUE_GAP_MS);
+    await a.as.mutation(api.pvp.findMatch, {});
+    const next = (await b.as.mutation(api.pvp.findMatch, {}))!.matchId;
+    const { a: inA, b: inB } = scriptedInputs();
+    await push(a.as, next, inA);
+    await push(b.as, next, inB);
+    expect(await a.as.mutation(api.pvp.finish, { matchId: next })).toBe(true);
+    expect(await a.as.query(api.pvp.myMatch, {})).toMatchObject({ endedBy: "ko", winner: 0, ratingChange: 0 });
+    const ratings = await t.run(async (ctx) => (await ctx.db.query("players").collect()).map((p) => p.pvpRating ?? null));
+    expect(ratings).toEqual([null, null]); // neither game moved a rating
   });
 });
