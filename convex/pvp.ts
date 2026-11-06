@@ -4,6 +4,7 @@ import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/s
 import type { Doc, Id } from "./_generated/dataModel";
 import { ROUNDS_TO_WIN } from "./game/fighters";
 import { MAX_FRAMES, OPENING, isInputs, replay } from "../src/game/rt/lockstep";
+import { FPS } from "../src/game/rt/engine";
 
 // Online PvP: free (no hearts, no AI). Matchmaking pairs whoever searched in the
 // last few seconds; the browsers swap inputs (lockstep) and the server replays
@@ -15,6 +16,10 @@ const ABANDONED_MS = 60_000; // a "live" match nobody has touched this long is o
 const START_RATING = 1000;
 const K = 32;
 const MAX_PUSH = 240;
+// Anti rating-farming with a second account:
+const MIN_RATED_FRAMES = OPENING.length + 10 * FPS; // a forfeit only counts after ~10s of play from both sides
+const MAX_RATED_PER_PAIR = 3; // rated games between the same two players per day
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 const vSide = v.union(v.literal(0), v.literal(1));
 const vPublicMatch = v.object({
@@ -61,6 +66,20 @@ async function fighter(ctx: QueryCtx, userId: Id<"users">) {
   return p;
 }
 
+async function isRated(ctx: QueryCtx, m: Doc<"pvpMatches">, endedBy: "ko" | "forfeit" | "abandoned") {
+  if (endedBy !== "ko") {
+    const [a, b] = await Promise.all([inputsOfSide(ctx, m._id, 0), inputsOfSide(ctx, m._id, 1)]);
+    if ((a?.chars.length ?? 0) < MIN_RATED_FRAMES || (b?.chars.length ?? 0) < MIN_RATED_FRAMES) return false;
+  }
+  const since = Date.now() - DAY_MS;
+  const ratedVs = async (p0: Id<"users">, p1: Id<"users">) =>
+    // shortcut: scans p0's last 100 matches today; a pair index if players ever play more than that daily.
+    (await ctx.db.query("pvpMatches").withIndex("by_p0", (q) => q.eq("p0", p0).gt("_creationTime", since)).take(100))
+      .filter((x) => x.p1 === p1 && (x.ratingChange ?? 0) > 0).length;
+  const [x, y] = await Promise.all([ratedVs(m.p0, m.p1), ratedVs(m.p1, m.p0)]);
+  return x + y < MAX_RATED_PER_PAIR;
+}
+
 // Ends a match once: records the winner and moves both PvP ratings (Elo).
 async function settle(ctx: MutationCtx, m: Doc<"pvpMatches">, winner: 0 | 1 | null, endedBy: "ko" | "forfeit" | "abandoned") {
   if (m.status === "done") return;
@@ -68,10 +87,15 @@ async function settle(ctx: MutationCtx, m: Doc<"pvpMatches">, winner: 0 | 1 | nu
     await ctx.db.patch("pvpMatches", m._id, { status: "done", endedBy });
     return;
   }
+  if (!(await isRated(ctx, m, endedBy))) {
+    await ctx.db.patch("pvpMatches", m._id, { status: "done", winner, endedBy, ratingChange: 0 });
+    return;
+  }
   const [w, l] = await Promise.all([fighter(ctx, winner === 0 ? m.p0 : m.p1), fighter(ctx, winner === 0 ? m.p1 : m.p0)]);
   const rw = w.pvpRating ?? START_RATING;
   const rl = l.pvpRating ?? START_RATING;
-  const delta = Math.max(1, Math.round(K * (1 - 1 / (1 + 10 ** ((rl - rw) / 400)))));
+  // No minimum gain: beating a much lower-rated (e.g. drained alt) account is worth ~0.
+  const delta = Math.round(K * (1 - 1 / (1 + 10 ** ((rl - rw) / 400))));
   await ctx.db.patch("players", w._id, { pvpRating: rw + delta, pvpWins: (w.pvpWins ?? 0) + 1 });
   await ctx.db.patch("players", l._id, { pvpRating: rl - delta, pvpLosses: (l.pvpLosses ?? 0) + 1 });
   await ctx.db.patch("pvpMatches", m._id, { status: "done", winner, endedBy, ratingChange: delta });

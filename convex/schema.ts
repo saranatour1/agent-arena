@@ -51,7 +51,9 @@ export default defineSchema({
     workflowId: v.optional(v.string()),
     day: v.optional(v.string()), 
     engine: v.optional(v.literal("realtime")),
-  }).index("by_user", ["userId"]),
+  })
+    .index("by_user", ["userId"])
+    .index("by_shareImage", ["shareImage"]),
 
   matches: defineTable({
     runId: v.id("runs"),

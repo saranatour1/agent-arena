@@ -7,6 +7,7 @@ import { start } from "@convex-dev/workflow";
 import schema from "./schema";
 import { api, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
+import { PLAN_WINDOW_MS } from "./game";
 
 const modules = import.meta.glob("./**/*.ts");
 (globalThis as { __INLINE_STEPS__?: boolean }).__INLINE_STEPS__ = false;
@@ -123,5 +124,29 @@ describe("real-time run (workflow waits on reported results)", () => {
     await expect(
       t.withIdentity({ subject: stranger }).mutation(api.game.reportMatch, win(match!._id, 0, [1, 0])),
     ).rejects.toThrow();
+  });
+
+  test("AI plans stop once a match outlives its window", async () => {
+    const { t, userId, current } = await setupRun();
+    const { match } = await current();
+    const late = match!._creationTime + PLAN_WINDOW_MS + 1;
+    expect(await t.query(internal.game.planContext, { matchId: match!._id, side: 1, userId, now: late })).toBeNull();
+  });
+
+  test("a share card can't take over (and delete) another run's image", async () => {
+    const { t, as, runId } = await setupRun();
+    const png = () => t.run((ctx) => ctx.storage.store(new Blob(["x"], { type: "image/png" })));
+    const victimFile = await png();
+    const victimUser = await t.run((ctx) => ctx.db.insert("users", {}));
+    await t.run((ctx) =>
+      ctx.db.insert("runs", { userId: victimUser, phase: "done", beaten: 0, perfects: 0, score: 0, shareImage: victimFile }),
+    );
+    await expect(as.mutation(api.share.saveCard, { runId, storageId: victimFile })).rejects.toThrow("Not your file");
+    expect(await t.run((ctx) => ctx.db.system.get("_storage", victimFile))).not.toBeNull();
+
+    const mine = await png();
+    await as.mutation(api.share.saveCard, { runId, storageId: mine });
+    await as.mutation(api.share.saveCard, { runId, storageId: mine }); // re-saving the same card is a no-op
+    expect(await t.run((ctx) => ctx.storage.getUrl(mine))).not.toBeNull();
   });
 });

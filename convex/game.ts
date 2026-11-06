@@ -131,6 +131,8 @@ export const startRun = mutation({
 });
 
 export const MIN_MATCH_MS = 4_000;
+// A match lasts one round (45s, replayed on a draw); after this its AI fighters stop calling models.
+export const PLAN_WINDOW_MS = 5 * 60_000;
 export const matchResultEvent = (matchId: string) => `matchResult:${matchId}`;
 
 const isCount = (n: number, max: number) => Number.isInteger(n) && n >= 0 && n <= max;
@@ -424,10 +426,13 @@ export const finishRun = internalMutation({
 
 // Authorizes a plan request: the caller's current match, an AI side, still live.
 export const planContext = internalQuery({
-  args: { matchId: v.id("matches"), side: v.number(), userId: v.string() },
-  handler: async (ctx, { matchId, side, userId }) => {
+  // `now` comes from the calling action (queries must not read the clock).
+  args: { matchId: v.id("matches"), side: v.number(), userId: v.string(), now: v.number() },
+  handler: async (ctx, { matchId, side, userId, now }) => {
     const match = await ctx.db.get("matches", matchId);
     if (!match || match.winner !== null) return null;
+    // An unreported match stops getting model plans (the client falls back to scripted moves).
+    if (now - match._creationTime > PLAN_WINDOW_MS) return null;
     const run = await ctx.db.get("runs", match.runId);
     if (!run || run.phase === "done" || run.userId !== userId || run.currentMatchId !== matchId) return null;
     const me = match.sides[side];
@@ -436,6 +441,8 @@ export const planContext = internalQuery({
     return {
       fighterId: me,
       opponent: opp === "player" ? "a human challenger" : FIGHTERS[opp].name,
+      // Fail closed if `npx convex run limits:init` was never run on this deployment.
+      globalCapSet: Boolean((await ai.global.status(ctx)).dailySpendLimitNanos),
     };
   },
 });
