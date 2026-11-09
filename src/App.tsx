@@ -13,6 +13,7 @@ import { StageBackdrop } from "./components/StageBackdrop";
 import { STAGES, stageFor, type StageId } from "./game/stages";
 import { ConvexMark } from "./components/ConvexMark";
 import { SoundToggle } from "./components/SoundToggle";
+import { GitHubLink } from "./components/GitHubLink";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 import { useUnlockToasts } from "./hooks/useUnlockToasts";
@@ -52,6 +53,7 @@ export default function App() {
   return (
     <TooltipProvider>
       <ConvexMark />
+      <GitHubLink />
       <SoundToggle />
       <Toaster position="top-center" richColors />
       <AuthLoading>
