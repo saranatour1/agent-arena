@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useMutation } from "convex/react";
+import { track } from "@databuddy/sdk/react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -24,7 +25,10 @@ export function NameEntry() {
               e.preventDefault();
               setPending(true);
               void claim({ username: name })
-                .then((r) => setError(r.ok ? null : r.error))
+                .then((r) => {
+                  setError(r.ok ? null : r.error);
+                  if (r.ok) track("signup_completed");
+                })
                 .catch(() => setError("Something went wrong. Try again."))
                 .finally(() => setPending(false));
             }}

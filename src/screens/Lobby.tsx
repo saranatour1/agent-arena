@@ -3,6 +3,7 @@ import { useMutation } from "convex/react";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { Clapperboard, Flame, LogOut, Swords, Users } from "lucide-react";
 import { toast } from "sonner";
+import { track } from "@databuddy/sdk/react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -41,6 +42,7 @@ export function Lobby({
     setPending(true);
     try {
       await startRun({ timeZone: timeZone() });
+      track("run_started");
     } catch (e) {
       toast.error(startRunError(e));
     } finally {

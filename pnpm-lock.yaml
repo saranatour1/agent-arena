@@ -32,6 +32,9 @@ importers:
       '@convex-dev/workflow':
         specifier: ^0.4.10
         version: 0.4.10(@convex-dev/workpool@0.4.15(@standard-schema/spec@1.1.0)(@typescript/typescript6@6.0.2)(convex-helpers@0.1.134(@standard-schema/spec@1.1.0)(@typescript/typescript6@6.0.2)(convex@1.49.0(react@19.3.1))(prettier@3.9.10)(react@19.3.1)(zod@4.6.7))(convex@1.49.0(react@19.3.1))(prettier@3.9.10)(react@19.3.1)(zod@4.6.7))(convex-helpers@0.1.134(@standard-schema/spec@1.1.0)(@typescript/typescript6@6.0.2)(convex@1.49.0(react@19.3.1))(prettier@3.9.10)(react@19.3.1)(zod@4.6.7))(convex@1.49.0(react@19.3.1))
+      '@databuddy/sdk':
+        specifier: ^3.5.1
+        version: 3.5.1(react@19.3.1)
       '@fontsource-variable/saira':
         specifier: ^5.3.0
         version: 5.3.0
@@ -516,6 +519,17 @@ packages:
   '@csstools/css-tokenizer@4.0.2':
     resolution: {integrity: sha512-OoKoR0f76dCY666JlcbhmVTs2drYj1GUXZTYTcbUgJjh9Nv41aFfZ21bPQTERm5+L5cBDo466NltB2lplS5GBw==}
     engines: {node: '>=20.19.0'}
+
+  '@databuddy/sdk@3.5.1':
+    resolution: {integrity: sha512-IEhHZeoJevuXAoLQMBANvcC+dEks8j2Vx/m+zH5POKIRR09tJeqcN0q7rHA59oetltMAi/qJyg/i3cCJv0AkUA==}
+    peerDependencies:
+      react: '>=18'
+      vue: '>=3.5'
+    peerDependenciesMeta:
+      react:
+        optional: true
+      vue:
+        optional: true
 
   '@dotenvx/dotenvx@1.75.1':
     resolution: {integrity: sha512-/BITOC9dmS/edY2zQwZNicQ059O6RKabtQfyEafV0nGtfYRNHYy1DIPiYVcov40+tob9hfmBnbR963dS+EQ1DQ==}
@@ -4497,6 +4511,10 @@ snapshots:
       css-tree: 3.2.1
 
   '@csstools/css-tokenizer@4.0.2': {}
+
+  '@databuddy/sdk@3.5.1(react@19.3.1)':
+    optionalDependencies:
+      react: 19.3.1
 
   '@dotenvx/dotenvx@1.75.1':
     dependencies:

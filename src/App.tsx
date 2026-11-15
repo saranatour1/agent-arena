@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { AuthLoading, Authenticated, Unauthenticated, useMutation, useQuery } from "convex/react";
+import { AuthLoading, Authenticated, Unauthenticated, useConvexAuth, useMutation, useQuery } from "convex/react";
 import { toast } from "sonner";
 import { api } from "../convex/_generated/api";
 import { Title } from "./screens/Title";
@@ -18,6 +18,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 import { useUnlockToasts } from "./hooks/useUnlockToasts";
 import { useAuthActions } from "@convex-dev/auth/react";
+import { DatabuddyProvider, track } from "@databuddy/sdk/react";
 import { Button } from "@/components/ui/button";
 import { localToday, startRunError, timeZone } from "./game/profile";
 import { sfx } from "./game/sfx";
@@ -33,7 +34,35 @@ const previewStage = ((): StageId | undefined => {
 const previewIntro = import.meta.env.DEV && params.has("intro");
 const previewPractice = import.meta.env.DEV && params.has("practice");
 
+// Public site ID; a local .env (not committed) can override it
+const databuddyClientId =
+  (import.meta.env.VITE_DATABUDDY_CLIENT_ID as string | undefined) ?? "7d95aa66-bfdc-4c79-a610-449db2f6d2ac";
+
 export default function App() {
+  return (
+    <>
+      <Screens />
+      {databuddyClientId && <Analytics clientId={databuddyClientId} />}
+    </>
+  );
+}
+
+function Analytics({ clientId }: { clientId: string }) {
+  const { isLoading } = useConvexAuth();
+  const user = useQuery(api.users.loggedInUser);
+  return (
+    <DatabuddyProvider
+      clientId={clientId}
+      autocapture={{ webVitals: true, errors: true }}
+      replay
+      user={user ? { id: user.id, traits: user.username ? { name: user.username } : undefined } : null}
+      // pending until auth settles, or an early unauthenticated null would reset the profile
+      userPending={isLoading || user === undefined}
+    />
+  );
+}
+
+function Screens() {
   if (previewPractice) {
     return (
       <>
@@ -89,6 +118,7 @@ function Game() {
     sfx.coin();
     try {
       await startRun({ timeZone: timeZone() });
+      track("run_started");
     } catch (e) {
       toast.error(startRunError(e));
     }
