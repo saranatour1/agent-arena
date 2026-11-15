@@ -1,6 +1,7 @@
 import { useMutation } from "convex/react";
 import { RotateCcw, Home } from "lucide-react";
 import { toast } from "sonner";
+import { track } from "@databuddy/sdk/react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -39,6 +40,7 @@ export function Results({
     sfx.coin();
     try {
       await startRun({ timeZone: timeZone() });
+      track("run_started");
       onContinue();
     } catch (e) {
       toast.error(startRunError(e));
